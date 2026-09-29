@@ -137,18 +137,23 @@ asks a Microsoft DHCP server which IPv4 scope each address belongs to, and
 writes the rows back with two extra columns placed straight after `IPAddress`.
 
 ```powershell
-.\Add-DhcpScopeColumns.ps1 `
-    -InputFile C:\Temp\ComputerInformation.csv `
-    -OutputFile C:\Temp\ComputerInformation-Dhcp.csv `
-    -DhcpServer 192.0.2.10
+.\Add-DhcpScopeColumns.ps1 -DhcpServer dhcp.example.com
 ```
+
+That is the whole command in the usual case: the report script writes to
+`C:\Temp\ComputerInformation.csv`, which is this script's default input, and the
+enriched file lands beside it as `ComputerInformation-Dhcp.csv`.
 
 | Parameter | Default | Purpose |
 | --- | --- | --- |
-| `-InputFile` | required | The CSV from `ComputerReport.ps1`. Must carry an `IPAddress` column. |
+| `-InputFile` | `C:\Temp\ComputerInformation.csv` | The CSV from `ComputerReport.ps1`, which is where that script writes by default. Must carry an `IPAddress` column. |
 | `-OutputFile` | the input name with `-Dhcp` appended | Where to write the enriched CSV. |
-| `-DhcpServer` | `192.0.2.10` (a placeholder) | DNS name or IPv4 address of the DHCP server. Replace it. |
+| `-DhcpServer` | none: it has to be given | DNS name or IPv4 address of the DHCP server. |
 | `-CsvDelimiter` | `;` | Must match the delimiter the report was written with. |
+
+Nothing is prompted for. If an argument is missing or a path is wrong, the
+script names every problem it found in one message and exits, rather than
+stopping to ask, so it also runs unattended from a scheduled task or a pipeline.
 
 This half needs the `DhcpServer` PowerShell module (`Install-WindowsFeature
 RSAT-DHCP`, or run the script on the DHCP server itself) and an account that may
@@ -240,6 +245,7 @@ samples, because a real directory returns far more attributes per computer.
 | Every row says `DNS lookup failed` | The machine's DNS is not resolving these names. |
 | `The DhcpServer module could not be loaded` | RSAT DHCP tools are missing, or you are not on Windows. |
 | `Could not read the scopes from the DHCP server` | Wrong `-DhcpServer`, the server is not Microsoft DHCP, or the account may not read its scopes. |
+| `The input CSV has no IPAddress column` | You pointed `-InputFile` at something that is not a report, or the delimiter is wrong. The message lists the columns it did find, which makes a delimiter mismatch obvious. |
 
 ## Privacy and scope
 
