@@ -130,6 +130,60 @@ function Get-ADComputer {
         MemberOf               = $null
         ServicePrincipalNames  = $null
     }
+
+    # PC-006: resolves to an address that is in no DHCP scope at all.
+    New-AdComputerObject @{
+        Name                   = "PC-006"
+        DNSHostName            = "pc-006.example.com"
+        Description            = "Konferens - utlanad dator"
+        DistinguishedName      = "CN=PC-006,OU=Computers,OU=Company,DC=example,DC=com"
+        ObjectGUID             = [guid]"66666666-6666-6666-6666-666666666666"
+        ObjectSID              = [byte[]](1, 5, 0, 0)
+        OperatingSystem        = "Windows 11 Pro"
+        OperatingSystemVersion = "10.0 (22631)"
+        LastLogonDate          = [datetime]"2026-05-11T09:00:00"
+        whenCreated            = [datetime]"2022-10-05T08:00:00"
+        Enabled                = $true
+        Location               = "Lund"
+        MemberOf               = $null
+        ServicePrincipalNames  = $null
+    }
+
+    # PC-007: resolves into a scope's subnet but inside its exclusion range.
+    New-AdComputerObject @{
+        Name                   = "PC-007"
+        DNSHostName            = "pc-007.example.com"
+        Description            = "Lager - skrivare"
+        DistinguishedName      = "CN=PC-007,OU=Computers,OU=Company,DC=example,DC=com"
+        ObjectGUID             = [guid]"77777777-7777-7777-7777-777777777777"
+        ObjectSID              = [byte[]](1, 5, 0, 0)
+        OperatingSystem        = "Windows 10 Enterprise"
+        OperatingSystemVersion = "10.0 (19045)"
+        LastLogonDate          = [datetime]"2026-09-28T14:20:00"
+        whenCreated            = [datetime]"2020-01-20T12:00:00"
+        Enabled                = $true
+        Location               = "Malmo"
+        MemberOf               = $null
+        ServicePrincipalNames  = $null
+    }
+
+    # PC-008: resolves into a scope whose subnet mask is not /24.
+    New-AdComputerObject @{
+        Name                   = "PC-008"
+        DNSHostName            = "pc-008.example.com"
+        Description            = "Testlab - klient"
+        DistinguishedName      = "CN=PC-008,OU=Computers,OU=Company,DC=example,DC=com"
+        ObjectGUID             = [guid]"88888888-8888-8888-8888-888888888888"
+        ObjectSID              = [byte[]](1, 5, 0, 0)
+        OperatingSystem        = "Windows 11 Enterprise"
+        OperatingSystemVersion = "10.0 (22631)"
+        LastLogonDate          = [datetime]"2026-09-25T16:45:00"
+        whenCreated            = [datetime]"2024-04-02T10:30:00"
+        Enabled                = $true
+        Location               = "Lund"
+        MemberOf               = $null
+        ServicePrincipalNames  = $null
+    }
 }
 
 Export-ModuleMember -Function Get-ADComputer, Get-ADOrganizationalUnit

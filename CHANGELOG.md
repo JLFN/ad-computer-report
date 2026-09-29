@@ -5,6 +5,41 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.1.0] - 2026-09-29
+
+### Added
+
+- `Add-DhcpScopeColumns.ps1`, which reads the report produced by
+  `ComputerReport.ps1`, asks a Microsoft DHCP server which IPv4 scope each
+  address belongs to, and writes the rows back with `DhcpScopeName` and
+  `DhcpScopeId` placed straight after `IPAddress`.
+- Scope matching by subnet: an address belongs to a scope when the address ANDed
+  with the scope's subnet mask equals the scope identifier and the address falls
+  inside that scope's start and end range. Exclusion ranges are read too, so an
+  address that sits in a scope's subnet but is excluded from it is reported as
+  such instead of being counted as in-scope.
+- Every address on a row is tried in turn, so a computer that resolved to
+  several addresses matches if any one of them is in a scope.
+- Three distinct values for the scope column when nothing matches, so a failed
+  lookup cannot be mistaken for an empty one: `No IP address to look up`,
+  `Not in any DHCP scope`, and `In scope but excluded`.
+- A `DhcpServer` stub module for the emulation harness, with four invented
+  scopes shaped to cover a plain scope, an exclusion range and a non-`/24` mask.
+- Three more invented computers in the sample data, covering an address in no
+  scope, an address in an exclusion range, and an address in a non-`/24` scope.
+
+### Changed
+
+- `emulator/Invoke-Emulation.ps1` now runs both stages and writes two sample
+  CSVs, so the enrichment is emulated as well as the collection.
+- `examples/ComputerInformation.sample.csv` was regenerated: the sample now
+  contains nine rows instead of six, because three computers were added to
+  exercise the scope matching.
+- `docs/emulator.md`, `README.md` and `AGENTS.md` document the second script,
+  the new columns and the boundary cases the change must not break.
+
 ## [1.0.0] - 2026-09-29
 
 ### Added

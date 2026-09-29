@@ -4,9 +4,12 @@ Guidance for contributors and for agents making changes here.
 
 ## What this is
 
-A Windows-only PowerShell script, plus a cross-platform emulation harness. The
-script is the product. The harness exists so the script can be run and reviewed
-without a domain controller, without RSAT and without Windows.
+A pair of Windows-only PowerShell scripts, plus a cross-platform emulation
+harness. The scripts are the product: `ComputerReport.ps1` collects Active
+Directory computer information into a CSV, and `Add-DhcpScopeColumns.ps1` adds
+DHCP scope columns to that CSV. The harness exists so both can be run and
+reviewed without a domain controller, without a DHCP server, without RSAT and
+without Windows.
 
 ## Non-negotiables
 
@@ -48,9 +51,15 @@ memory entry rather than through this file.
 
 ## Before calling a change done
 
-1. Run `pwsh ./emulator/Invoke-Emulation.ps1` and confirm the summary
-   reconciles: found equals resolved plus no-IPv4-record plus failed.
-2. Run PSScriptAnalyzer (`Invoke-ScriptAnalyzer -Path ComputerReport.ps1`) and
-   confirm no findings other than `PSAvoidUsingWriteHost`.
-3. If the change affects the columns, update the sample output and the column
-   documentation in `README.md`.
+1. Run `pwsh ./emulator/Invoke-Emulation.ps1` and confirm both summaries
+   reconcile: in the report, found equals resolved plus no-IPv4-record plus
+   failed; in the enrichment, the rows total equals in-a-scope plus excluded
+   plus not-in-any-scope plus no-IP-address.
+2. Run PSScriptAnalyzer (`Invoke-ScriptAnalyzer -Path <script>`) on every
+   changed script and confirm no findings other than `PSAvoidUsingWriteHost`.
+3. If the change affects the columns, regenerate both sample CSVs and update the
+   column documentation in `README.md`. The scope columns belong immediately
+   after `IPAddress`; keep them there.
+4. If a change touches the subnet arithmetic, run the boundary cases: the last
+   address in a range, the first address past it, an address one past the
+   subnet, and a non-`/24` mask.
