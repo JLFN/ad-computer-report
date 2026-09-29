@@ -20,23 +20,29 @@ client, or run it on the server itself), and an account that may read the
 scopes on the target server.
 
 .PARAMETER InputFile
-The CSV produced by ComputerReport.ps1. It must carry an IPAddress column.
+The CSV produced by ComputerReport.ps1. It must carry an IPAddress column. The
+default is where the report script writes by default, so the usual run needs
+only -DhcpServer.
 
 .PARAMETER OutputFile
 Where to write the enriched CSV. Defaults to the input file's name with
 -Dhcp appended before the extension, in the same folder.
 
 .PARAMETER DhcpServer
-DNS name or IPv4 address of the DHCP server to query. The placeholder below is
-from the documentation range and must be replaced with your own server.
+DNS name or IPv4 address of the DHCP server to query. There is no usable
+default: the placeholder below belongs to the documentation range, so leaving
+-DhcpServer off stops the script with an explanation rather than trying to
+reach it.
 
 .PARAMETER CsvDelimiter
 Field separator for reading and writing the CSV. Must match the delimiter the
 report was written with.
 
 .EXAMPLE
-.\Add-DhcpScopeColumns.ps1 -InputFile C:\Temp\ComputerInformation.csv `
-    -DhcpServer 192.0.2.10
+.\Add-DhcpScopeColumns.ps1 -DhcpServer dhcp.example.com
+
+Reads C:\Temp\ComputerInformation.csv, the report's default output, and writes
+C:\Temp\ComputerInformation-Dhcp.csv.
 
 .EXAMPLE
 .\Add-DhcpScopeColumns.ps1 -InputFile .\ComputerInformation.csv `
@@ -46,14 +52,17 @@ report was written with.
 .NOTES
 The two added columns are placed directly after IPAddress; every other column
 keeps the position and the value it had in the input file.
+
+Nothing is prompted for. A missing argument is named in an error message rather
+than asked for interactively, so the script can also be run from a scheduled
+task or a pipeline.
 #>
 
 #Requires -Version 5.1
 
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)]
-    [string]$InputFile,
+    [string]$InputFile = "C:\Temp\ComputerInformation.csv",
 
     [string]$OutputFile,
 
@@ -320,15 +329,55 @@ function Find-DhcpScope {
 }
 
 # ================================================================
-# CHECK INPUT FILE AND OUTPUT PATH
+# CHECK THE ARGUMENTS
 # ================================================================
+# Every reason the run cannot start is collected and reported in one go, so a
+# first run does not have to be repeated once per missing argument. Nothing is
+# prompted for: the defaults are ordinary values and what is missing is named.
+
+$Problems = [System.Collections.Generic.List[string]]::new()
 
 if (-not (Test-Path -LiteralPath $InputFile)) {
-    Write-Host "ERROR: Input file was not found:" -ForegroundColor Red
-    Write-Host $InputFile -ForegroundColor Red
+    $Problems.Add("Input file was not found: $InputFile")
+}
+
+# Not a comparison against the placeholder text: what matters is whether the
+# caller supplied a server at all. A real server could legitimately sit at an
+# address that happens to look like a placeholder, and the placeholder itself
+# must never be dialled by accident.
+if (-not $PSBoundParameters.ContainsKey("DhcpServer")) {
+    $Problems.Add("No DHCP server was given. Pass -DhcpServer with the name or IP address of the DHCP server to query.")
+}
+
+if ($Problems.Count -gt 0) {
+    Write-Host ""
+    Write-Host "ERROR: the script cannot start yet." -ForegroundColor Red
+    Write-Host ""
+
+    foreach ($Problem in $Problems) {
+        Write-Host "  - $Problem" -ForegroundColor Red
+    }
+
+    Write-Host ""
+    Write-Host "ComputerReport.ps1 writes its report to C:\Temp\ComputerInformation.csv" `
+        -ForegroundColor Yellow
+
+    Write-Host "by default, so the usual run is:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  .\Add-DhcpScopeColumns.ps1 -DhcpServer dhcp.example.com" `
+        -ForegroundColor Yellow
+
+    Write-Host ""
+    Write-Host "and pointing at a report somewhere else:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  .\Add-DhcpScopeColumns.ps1 -InputFile C:\Temp\ComputerInformation.csv -DhcpServer dhcp.example.com" `
+        -ForegroundColor Yellow
+
+    Write-Host ""
     exit 1
 }
 
+# Create the output folder if it does not exist.
 if (-not $OutputFile) {
     $inputFolder = Split-Path -Path $InputFile -Parent
     $inputBaseName = [System.IO.Path]::GetFileNameWithoutExtension($InputFile)
@@ -383,6 +432,19 @@ if ($InputColumns -notcontains "IPAddress") {
     Write-Host "ERROR: The input CSV has no IPAddress column." -ForegroundColor Red
     Write-Host "This script expects the output of ComputerReport.ps1." `
         -ForegroundColor Red
+
+    Write-Host ""
+    Write-Host "Columns found in the file:" -ForegroundColor Yellow
+    Write-Host "  $($InputColumns -join ', ')" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "If that looks like one long column, the file was written with a" `
+        -ForegroundColor Yellow
+
+    Write-Host "different delimiter: the report uses ';' by default, so pass" `
+        -ForegroundColor Yellow
+
+    Write-Host "-CsvDelimiter with the one your file uses." -ForegroundColor Yellow
+    Write-Host ""
     exit 1
 }
 

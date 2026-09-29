@@ -28,6 +28,12 @@ without Windows.
   `examples/ComputerInformation.sample.csv`.
 - Write plain text. No emoji, in code, comments, documentation or commit
   messages.
+- Never make a parameter mandatory. A mandatory parameter stops the script and
+  asks for it interactively, which breaks unattended use from a scheduled task
+  or a pipeline and is a poor first run besides. Give the parameter a default,
+  and when there is no sensible default, check for it and fail with a message
+  that says what to pass. Both scripts must run to a clear error, never to a
+  prompt, when they are invoked with no arguments.
 
 ## Conventions
 

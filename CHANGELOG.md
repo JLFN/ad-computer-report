@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-29
+
+### Fixed
+
+- `Add-DhcpScopeColumns.ps1` no longer prompts for input. `-InputFile` was a
+  mandatory parameter, so running the script without arguments stopped and asked
+  for it interactively, which also made the script unusable from a scheduled
+  task or a pipeline. It now defaults to `C:\Temp\ComputerInformation.csv`,
+  which is where the report script writes, so the usual run needs only
+  `-DhcpServer`.
+- Every reason the script cannot start is now reported in a single message
+  instead of one per run: a missing input file and a missing `-DhcpServer` are
+  named together, along with the usual command line. `-DhcpServer` has no usable
+  default, because the documentation-range placeholder must never be dialled by
+  accident, so leaving it off says so rather than attempting a connection.
+- A CSV that is not a report now explains itself. The "no IPAddress column"
+  error lists the columns it actually found, so a wrong `-CsvDelimiter` shows up
+  as one long column and the message says which delimiter the report uses.
+
 ## [1.1.0] - 2026-09-29
 
 ### Added
