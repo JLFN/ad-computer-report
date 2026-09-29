@@ -28,12 +28,17 @@ without Windows.
   `examples/ComputerInformation.sample.csv`.
 - Write plain text. No emoji, in code, comments, documentation or commit
   messages.
-- Never make a parameter mandatory. A mandatory parameter stops the script and
-  asks for it interactively, which breaks unattended use from a scheduled task
-  or a pipeline and is a poor first run besides. Give the parameter a default,
-  and when there is no sensible default, check for it and fail with a message
-  that says what to pass. Both scripts must run to a clear error, never to a
-  prompt, when they are invoked with no arguments.
+- Never make a script's own parameter mandatory, meaning one in the `param`
+  block at the top of the file. A mandatory parameter stops the script and asks
+  for it interactively, which breaks unattended use from a scheduled task or a
+  pipeline and is a poor first run besides. Give the parameter a default, and
+  where there is no sensible default, such as the DHCP server address, check for
+  it and fail with a message that says what to pass. Both scripts must run to a
+  clear error, never to a prompt, when invoked with no arguments.
+- Parameters of helper functions inside a script are a separate case and may
+  stay mandatory. The script always supplies them, so their absence is a
+  programming error rather than a user error, and being mandatory makes that
+  error loud.
 
 ## Conventions
 
