@@ -119,6 +119,33 @@ function ConvertTo-IPv4Number {
     $value
 }
 
+function Get-RequiredProperty {
+    <#
+    Reads a property that must be there, and fails with a message naming what
+    was found instead when it is not. The objects a real DHCP server returns are
+    CIM instances whose exact property set the vendor documentation does not
+    list, so a missing property must be a clear error rather than a confusing
+    null reference or, worse, a silently empty answer.
+    #>
+    param(
+        [Parameter(Mandatory)]
+        $Object,
+
+        [Parameter(Mandatory)]
+        [string]$Name,
+
+        [Parameter(Mandatory)]
+        [string]$Context
+    )
+
+    if ($Object.PSObject.Properties.Name -notcontains $Name) {
+        $found = ($Object.PSObject.Properties.Name | Sort-Object) -join ", "
+        throw "$Context has no '$Name' property. Properties present: $found"
+    }
+
+    $Object.$Name
+}
+
 function Get-DhcpScopeTable {
     <#
     Reads every IPv4 scope and every exclusion range from the server into plain
@@ -141,7 +168,10 @@ function Get-DhcpScopeTable {
     $exclusionsByScope = @{}
 
     foreach ($scope in $scopes) {
-        $scopeIdText = $scope.ScopeId.ToString()
+        $scopeIdText = Get-RequiredProperty `
+            -Object $scope `
+            -Name "ScopeId" `
+            -Context "A scope on '$ComputerName'"
 
         $exclusions = @()
 
@@ -159,11 +189,24 @@ function Get-DhcpScopeTable {
             $exclusions = @()
         }
 
-        $exclusionsByScope[$scopeIdText] = @(
+        $exclusionsByScope[$scopeIdText.ToString()] = @(
             foreach ($exclusion in $exclusions) {
+                # Read through Get-RequiredProperty so an unexpected exclusion
+                # object is reported. Swallowing this would silently turn an
+                # excluded address into an in-scope one.
+                $startText = Get-RequiredProperty `
+                    -Object $exclusion `
+                    -Name "StartRange" `
+                    -Context "An exclusion range on '$ComputerName'"
+
+                $endText = Get-RequiredProperty `
+                    -Object $exclusion `
+                    -Name "EndRange" `
+                    -Context "An exclusion range on '$ComputerName'"
+
                 [pscustomobject]@{
-                    Start = ConvertTo-IPv4Number -Address $exclusion.StartRange.ToString()
-                    End   = ConvertTo-IPv4Number -Address $exclusion.EndRange.ToString()
+                    Start = ConvertTo-IPv4Number -Address $startText.ToString()
+                    End   = ConvertTo-IPv4Number -Address $endText.ToString()
                 }
             }
         )
@@ -171,10 +214,31 @@ function Get-DhcpScopeTable {
 
     $table = @(
         foreach ($scope in $scopes) {
-            $scopeIdText = $scope.ScopeId.ToString()
-            $mask = ConvertTo-IPv4Number -Address $scope.SubnetMask.ToString()
+            $scopeIdValue = Get-RequiredProperty `
+                -Object $scope `
+                -Name "ScopeId" `
+                -Context "A scope on '$ComputerName'"
+
+            $maskValue = Get-RequiredProperty `
+                -Object $scope `
+                -Name "SubnetMask" `
+                -Context "The scope $scopeIdValue on '$ComputerName'"
+
+            $startValue = Get-RequiredProperty `
+                -Object $scope `
+                -Name "StartRange" `
+                -Context "The scope $scopeIdValue on '$ComputerName'"
+
+            $endValue = Get-RequiredProperty `
+                -Object $scope `
+                -Name "EndRange" `
+                -Context "The scope $scopeIdValue on '$ComputerName'"
+
+            $scopeIdText = $scopeIdValue.ToString()
+            $mask = ConvertTo-IPv4Number -Address $maskValue.ToString()
             $scopeIdNumber = ConvertTo-IPv4Number -Address $scopeIdText
 
+            # A scope may carry no name; the identifier is then the best label.
             $scopeName = $scope.Name
             if (-not $scopeName) {
                 $scopeName = $scopeIdText
@@ -185,8 +249,8 @@ function Get-DhcpScopeTable {
                 Name       = $scopeName
                 Network    = $scopeIdNumber -band $mask
                 Mask       = $mask
-                Start      = ConvertTo-IPv4Number -Address $scope.StartRange.ToString()
-                End        = ConvertTo-IPv4Number -Address $scope.EndRange.ToString()
+                Start      = ConvertTo-IPv4Number -Address $startValue.ToString()
+                End        = ConvertTo-IPv4Number -Address $endValue.ToString()
                 Exclusions = $exclusionsByScope[$scopeIdText]
             }
         }

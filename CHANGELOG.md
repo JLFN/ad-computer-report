@@ -32,6 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The enrichment validates the property names it reads from the DHCP server
+  before using them. The vendor documentation for the scope and exclusion
+  cmdlets names the returned CIM class but does not list its properties, so a
+  wrong assumption would otherwise surface as a null-reference error, or worse,
+  as a silently empty answer for an excluded address. A missing property now
+  fails with a message naming the property and listing the ones actually
+  present, and no output file is written.
 - `emulator/Invoke-Emulation.ps1` now runs both stages and writes two sample
   CSVs, so the enrichment is emulated as well as the collection.
 - `examples/ComputerInformation.sample.csv` was regenerated: the sample now
