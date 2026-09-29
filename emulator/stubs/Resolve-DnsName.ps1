@@ -29,6 +29,18 @@ function Resolve-DnsName {
         "pc-003*" {
             [pscustomobject]@{ Name = $Name; Type = "AAAA"; IPAddress = "fd00::3a1" }
         }
+        "pc-006*" {
+            # An address that belongs to no DHCP scope.
+            [pscustomobject]@{ Name = $Name; Type = "A"; IPAddress = "10.99.7.7" }
+        }
+        "pc-007*" {
+            # An address inside a scope's subnet but inside its exclusion range.
+            [pscustomobject]@{ Name = $Name; Type = "A"; IPAddress = "10.10.3.5" }
+        }
+        "pc-008*" {
+            # An address in a scope whose subnet mask is not /24.
+            [pscustomobject]@{ Name = $Name; Type = "A"; IPAddress = "10.20.2.15" }
+        }
         default {
             Write-Error "DNS name does not exist"
         }

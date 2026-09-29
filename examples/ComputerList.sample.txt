@@ -4,5 +4,8 @@ pc-002
 PC-003
 PC-004
 PC-001.example.com
+PC-006
+PC-007
+PC-008
 
   PC-099

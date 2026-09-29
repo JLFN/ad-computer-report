@@ -130,24 +130,80 @@ as `<Binary data>`. Missing attributes are left empty.
 Rows for computers that were not found still carry every column, empty, so the
 sheet has a uniform shape and can be filtered as a whole.
 
+## Adding the DHCP scope of each address
+
+`Add-DhcpScopeColumns.ps1` reads the CSV that `ComputerReport.ps1` produced,
+asks a Microsoft DHCP server which IPv4 scope each address belongs to, and
+writes the rows back with two extra columns placed straight after `IPAddress`.
+
+```powershell
+.\Add-DhcpScopeColumns.ps1 `
+    -InputFile C:\Temp\ComputerInformation.csv `
+    -OutputFile C:\Temp\ComputerInformation-Dhcp.csv `
+    -DhcpServer 192.0.2.10
+```
+
+| Parameter | Default | Purpose |
+| --- | --- | --- |
+| `-InputFile` | required | The CSV from `ComputerReport.ps1`. Must carry an `IPAddress` column. |
+| `-OutputFile` | the input name with `-Dhcp` appended | Where to write the enriched CSV. |
+| `-DhcpServer` | `192.0.2.10` (a placeholder) | DNS name or IPv4 address of the DHCP server. Replace it. |
+| `-CsvDelimiter` | `;` | Must match the delimiter the report was written with. |
+
+This half needs the `DhcpServer` PowerShell module (`Install-WindowsFeature
+RSAT-DHCP`, or run the script on the DHCP server itself) and an account that may
+read the scopes there. It only reads: nothing is changed on the server. It talks
+to the Windows DHCP service, so it cannot read scopes from a router, a firewall
+or a Linux DHCP server.
+
+The two added columns:
+
+| Column | Meaning |
+| --- | --- |
+| `DhcpScopeName` | The scope's name, or one of the status words below. |
+| `DhcpScopeId` | The scope's identifier, such as `10.10.1.0`. Empty when nothing matched. |
+
+An address belongs to a scope when the address ANDed with the scope's subnet
+mask equals the scope identifier, and the address lies inside that scope's start
+and end range. Every address on a row is tried in turn, so a computer that
+resolved to several addresses matches if any one of them is in a scope.
+
+When nothing matches, `DhcpScopeName` says which case it is, so an empty cell
+can never be mistaken for a scope that failed to load:
+
+- `No IP address to look up` — the report recorded no address for that computer, usually because DNS did not resolve it.
+- `Not in any DHCP scope` — an address was found, but no scope on the server manages it.
+- `In scope but excluded` — the address lies in a scope's subnet but inside an exclusion range. `DhcpScopeId` still names the scope, so an excluded address shows which scope it belongs to.
+
+One case is worth knowing about because it looks like a contradiction: an
+address inside a scope's subnet but outside its start and end range, such as the
+network address itself or a static server address above the range, is reported
+as `Not in any DHCP scope`. That is deliberate. Such an address is in the same
+subnet as the scope but is not one the scope hands out, which is a different
+thing from an address the scope excludes from its own range.
+
 ## Trying it without a domain
 
-`emulator/` runs the real script against invented data, so you can see exactly
-what the output looks like before pointing it at anything real. It needs no
-domain controller, no RSAT and not even Windows:
+`emulator/` runs the real scripts against invented data, so you can see exactly
+what the output looks like before pointing anything at a real environment. It
+needs no domain controller, no DHCP server, no RSAT and not even Windows:
 
 ```bash
 pwsh ./emulator/Invoke-Emulation.ps1
 ```
 
-It writes `examples/ComputerInformation.sample.csv`, which is committed, so you
-can also just read that file. The sample input is
-`examples/ComputerList.sample.txt`. See [docs/emulator.md](docs/emulator.md)
-for how the harness works and how to extend it.
+It runs both stages and writes two committed files you can also just read:
+`examples/ComputerInformation.sample.csv` (the report) and
+`examples/ComputerInformation-Dhcp.sample.csv` (the same report with the scope
+columns). The sample input is `examples/ComputerList.sample.txt`. See
+[docs/emulator.md](docs/emulator.md) for how the harness works and how to
+extend it.
 
-Nothing in the emulator touches a network or a directory. The computers, their
-attributes, the DNS answers and the OU are all invented, and the emulated
-report describes that invented directory, not any real one.
+Nothing in the emulator touches a network, a directory or a DHCP server. The
+computers, their attributes, the DNS answers, the OU and the DHCP scopes are all
+invented, so the output illustrates the scripts' behavior and says nothing about
+any real environment. A real run will have many more attribute columns than the
+samples, because a real directory returns far more attributes per computer.
 
 ## Known behavior and limitations
 
@@ -182,6 +238,8 @@ report describes that invented directory, not any real one.
 | `Could not write the CSV file` | The CSV is open in Excel. Close it and rerun. |
 | Every row says `Computer not found in target OU` | The OU is right but the computers are not in it, or the names do not match their directory names. |
 | Every row says `DNS lookup failed` | The machine's DNS is not resolving these names. |
+| `The DhcpServer module could not be loaded` | RSAT DHCP tools are missing, or you are not on Windows. |
+| `Could not read the scopes from the DHCP server` | Wrong `-DhcpServer`, the server is not Microsoft DHCP, or the account may not read its scopes. |
 
 ## Privacy and scope
 
@@ -199,14 +257,16 @@ what your own output does before you commit it anywhere.
 ## Repository layout
 
 ```
-ComputerReport.ps1                  the script
-emulator/Invoke-Emulation.ps1       runs the script against invented data
-emulator/stubs/                     stand-ins for ActiveDirectory and Resolve-DnsName
-examples/ComputerList.sample.txt    sample input
-examples/ComputerInformation.sample.csv   emulated output
-docs/emulator.md                    how the emulation harness works
-qa-evidence/qa-waiver.md            the recorded decision about the QA gate
-CHANGELOG.md                        release history
+ComputerReport.ps1                            collects the computer information
+Add-DhcpScopeColumns.ps1                      adds the DHCP scope columns to that report
+emulator/Invoke-Emulation.ps1                 runs both scripts against invented data
+emulator/stubs/                               stand-ins for ActiveDirectory, DhcpServer and Resolve-DnsName
+examples/ComputerList.sample.txt              sample input
+examples/ComputerInformation.sample.csv       emulated report
+examples/ComputerInformation-Dhcp.sample.csv  the same report with scope columns
+docs/emulator.md                              how the emulation harness works
+qa-evidence/qa-waiver.md                      the recorded decision about the QA gate
+CHANGELOG.md                                  release history
 ```
 
 ## License
